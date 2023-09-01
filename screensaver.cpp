@@ -1,5 +1,17 @@
 #include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
+#include <cstdlib>
+#include <ctime>
+
+// Funcion que genera el circulo
+void SDL_RenderFillCircle(SDL_Renderer* renderer, int x, int y, int radius) {
+    for (int dy = -radius; dy <= radius; dy++) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            if (dx * dx + dy * dy <= radius * radius) {
+                SDL_RenderDrawPoint(renderer, x + dx, y + dy);
+            }
+        }
+    }
+}
 
 int main(int argc, char* argv[]) {
     // Inicializar SDL
@@ -8,16 +20,9 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Inicializar SDL_ttf
-    if (TTF_Init() != 0) {
-        SDL_Log("Error al inicializar SDL_ttf: %s", TTF_GetError());
-        SDL_Quit();
-        return 1;
-    }
-
     // Crear una ventana
     SDL_Window* window = SDL_CreateWindow(
-        "Protector de pantalla",
+        "Círculos Rebote",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
         800, 600, // Tamaño de la ventana
@@ -39,64 +44,32 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Color de fondo: blanco
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    SDL_RenderClear(renderer);
-
-    // Color del texto: negro
-    SDL_Color textColor = {0, 0, 0, 255};
-
-    // Cargar la fuente
-    TTF_Font* font = TTF_OpenFont("./fonts/minecraft_font.ttf", 36); // Cambia la ruta y el tamaño de la fuente
-    if (!font) {
-        SDL_Log("Error al cargar la fuente: %s", TTF_GetError());
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-
-    // Crear la superficie del texto
-    SDL_Surface* textSurface = TTF_RenderText_Solid(font, "Hola mundo", textColor);
-    if (!textSurface) {
-        SDL_Log("Error al crear la superficie de texto: %s", TTF_GetError());
-        TTF_CloseFont(font);
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-
-    // Crear la textura del texto
-    SDL_Texture* textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
-    if (!textTexture) {
-        SDL_Log("Error al crear la textura de texto: %s", SDL_GetError());
-        SDL_FreeSurface(textSurface);
-        TTF_CloseFont(font);
-        SDL_DestroyRenderer(renderer);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        return 1;
-    }
-
-    // Limpiar la superficie de texto
-    SDL_FreeSurface(textSurface);
-
-    // Obtener el tamaño de la ventana
-    int windowWidth, windowHeight;
-    SDL_GetWindowSize(window, &windowWidth, &windowHeight);
-
-    // Posición del texto en el centro de la ventana
-    SDL_Rect textRect = {
-        (windowWidth - textSurface->w) / 2,
-        (windowHeight - textSurface->h) / 2,
-        textSurface->w,
-        textSurface->h
-    };
-
     // Bucle principal
     bool quit = false;
     SDL_Event event;
+
+    // Número de círculos a generar
+    int numCircles = 10; 
+
+    // Semilla para generar colores aleatorios
+    srand(static_cast<unsigned int>(time(nullptr)));
+
+    // Arreglos para almacenar las propiedades de los círculos
+    int circleX[numCircles];
+    int circleY[numCircles];
+    int circleRadius = 30;
+
+    // Velocidades de movimiento aleatorias
+    int circleSpeedX[numCircles];
+    int circleSpeedY[numCircles];
+
+    // Generar círculos con propiedades aleatorias
+    for (int i = 0; i < numCircles; ++i) {
+        circleX[i] = rand() % (800 - 2 * circleRadius) + circleRadius;
+        circleY[i] = rand() % (600 - 2 * circleRadius) + circleRadius;
+        circleSpeedX[i] = rand() % 5 + 1;
+        circleSpeedY[i] = rand() % 5 + 1;
+    }
 
     while (!quit) {
         while (SDL_PollEvent(&event)) {
@@ -106,18 +79,34 @@ int main(int argc, char* argv[]) {
         }
 
         // Limpiar el renderer
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderClear(renderer);
 
-        // Dibujar el texto
-        SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+        for (int i = 0; i < numCircles; ++i) {
+            circleX[i] += circleSpeedX[i];
+            circleY[i] += circleSpeedY[i];
+
+            if (circleX[i] <= circleRadius || circleX[i] >= 800 - circleRadius) {
+                circleSpeedX[i] = -circleSpeedX[i];
+            }
+
+            if (circleY[i] <= circleRadius || circleY[i] >= 600 - circleRadius) {
+                circleSpeedY[i] = -circleSpeedY[i];
+            }
+
+            Uint8 red = rand() % 256;
+            Uint8 green = rand() % 256;
+            Uint8 blue = rand() % 256;
+            SDL_SetRenderDrawColor(renderer, red, green, blue, 255);
+
+            SDL_RenderFillCircle(renderer, circleX[i], circleY[i], circleRadius);
+        }
 
         // Actualizar la pantalla
         SDL_RenderPresent(renderer);
     }
 
     // Liberar recursos
-    SDL_DestroyTexture(textTexture);
-    TTF_CloseFont(font);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
