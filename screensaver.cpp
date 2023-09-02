@@ -1,6 +1,7 @@
 #include <SDL2/SDL.h>
 #include <cstdlib>
 #include <ctime>
+#include <iostream>
 
 // Funcion que genera el circulo
 void SDL_RenderFillCircle(SDL_Renderer* renderer, int x, int y, int radius) {
@@ -14,6 +15,14 @@ void SDL_RenderFillCircle(SDL_Renderer* renderer, int x, int y, int radius) {
 }
 
 int main(int argc, char* argv[]) {
+    // Comprobar si se proporcionó un argumento
+    if (argc != 2) {
+        std::cout << "Uso: " << argv[0] << " <número_de_círculos>" << std::endl;
+        return 1;
+    }
+
+    int numCircles = std::stoi(argv[1]); // Obtener el número de círculos desde el argumento
+
     // Inicializar SDL
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         SDL_Log("Error al inicializar SDL: %s", SDL_GetError());
@@ -47,9 +56,6 @@ int main(int argc, char* argv[]) {
     // Bucle principal
     bool quit = false;
     SDL_Event event;
-
-    // Número de círculos a generar
-    int numCircles = 10; 
 
     // Semilla para generar colores aleatorios
     srand(static_cast<unsigned int>(time(nullptr)));
