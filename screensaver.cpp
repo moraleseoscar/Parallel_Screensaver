@@ -77,7 +77,18 @@ int main(int argc, char* argv[]) {
         circleSpeedY[i] = rand() % 5 + 1;
     }
 
+    Uint32 current_time, last_time = 0, fps = 0;
+
     while (!quit) {
+        current_time = SDL_GetTicks();
+        if (current_time > last_time + 1000) {
+            printf("%d fps\n", fps);
+            fps = 0;
+            last_time = current_time;
+        }
+
+        fps++;
+
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) {
                 quit = true;
