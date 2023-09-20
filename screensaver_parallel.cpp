@@ -1,7 +1,9 @@
 #include <SDL2/SDL.h>
 #include <cstdlib>
 #include <ctime>
+#include <vector>
 #include <iostream>
+#include <omp.h>
 
 // Funcion que genera el circulo
 void SDL_RenderFillCircle(SDL_Renderer* renderer, int x, int y, int radius) {
@@ -67,13 +69,13 @@ int main(int argc, char* argv[]) {
     srand(static_cast<unsigned int>(time(nullptr)));
 
     // Arreglos para almacenar las propiedades de los círculos
-    int circleX[numCircles];
-    int circleY[numCircles];
+    std::vector<int> circleX(numCircles);
+    std::vector<int> circleY(numCircles);
     int circleRadius = 30;
 
     // Velocidades de movimiento aleatorias
-    int circleSpeedX[numCircles];
-    int circleSpeedY[numCircles];
+    std::vector<int> circleSpeedX(numCircles);
+    std::vector<int> circleSpeedY(numCircles);
 
     // Generar círculos con propiedades aleatorias
     for (int i = 0; i < numCircles; ++i) {
@@ -82,6 +84,8 @@ int main(int argc, char* argv[]) {
         circleSpeedX[i] = rand() % 5 + 1;
         circleSpeedY[i] = rand() % 5 + 1;
     }
+
+    omp_lock_t circlesMutex;    //Inicializar mutex
 
     Uint32 current_time, last_time = 0, fps = 0;
 
@@ -105,9 +109,14 @@ int main(int argc, char* argv[]) {
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderClear(renderer);
 
+        omp_init_lock(&circlesMutex); // Se inicializa el mutex
+
+        #pragma omp parallel for
         for (int i = 0; i < numCircles; ++i) {
             circleX[i] += circleSpeedX[i];
             circleY[i] += circleSpeedY[i];
+
+            omp_set_lock(&circlesMutex);
 
             if (circleX[i] <= circleRadius || circleX[i] >= 800 - circleRadius) {
                 circleSpeedX[i] = -circleSpeedX[i];
@@ -120,9 +129,11 @@ int main(int argc, char* argv[]) {
             Uint8 red = rand() % 256;
             Uint8 green = rand() % 256;
             Uint8 blue = rand() % 256;
-            SDL_SetRenderDrawColor(renderer, red, green, blue, 255);
 
+            
+            SDL_SetRenderDrawColor(renderer, red, green, blue, 255);
             SDL_RenderFillCircle(renderer, circleX[i], circleY[i], circleRadius);
+            omp_unset_lock(&circlesMutex);
         }
 
         // Actualizar la pantalla
