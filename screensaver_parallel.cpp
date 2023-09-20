@@ -5,7 +5,6 @@
 #include <iostream>
 #include <omp.h>
 
-// Funcion que genera el circulo
 void SDL_RenderFillCircle(SDL_Renderer* renderer, int x, int y, int radius) {
     for (int dy = -radius; dy <= radius; dy++) {
         for (int dx = -radius; dx <= radius; dx++) {
@@ -17,32 +16,28 @@ void SDL_RenderFillCircle(SDL_Renderer* renderer, int x, int y, int radius) {
 }
 
 int main(int argc, char* argv[]) {
-    // Comprobar si se proporcionó un argumento
     if (argc != 2) {
         std::cout << "Uso: " << argv[0] << " <número_de_círculos>" << std::endl;
         return 1;
     }
 
+    int numCircles = std::stoi(argv[1]);
 
-    int numCircles = std::stoi(argv[1]); // Obtener el número de círculos desde el argumento
-
-    if(numCircles <=0 ){
-        std::cout << "No se pueden ingresar numeros menores o iguales que 0" << std::endl;
+    if (numCircles <= 0) {
+        std::cout << "No se pueden ingresar números menores o iguales que 0" << std::endl;
         return 1;
     }
 
-    // Inicializar SDL
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         SDL_Log("Error al inicializar SDL: %s", SDL_GetError());
         return 1;
     }
 
-    // Crear una ventana
     SDL_Window* window = SDL_CreateWindow(
         "Círculos Rebote",
         SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED,
-        800, 600, // Tamaño de la ventana
+        800, 600,
         SDL_WINDOW_SHOWN
     );
 
@@ -52,7 +47,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Crear un renderer
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer) {
         SDL_Log("Error al crear el renderer: %s", SDL_GetError());
@@ -61,23 +55,19 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Bucle principal
     bool quit = false;
     SDL_Event event;
 
-    // Semilla para generar colores aleatorios
     srand(static_cast<unsigned int>(time(nullptr)));
 
-    // Arreglos para almacenar las propiedades de los círculos
     std::vector<int> circleX(numCircles);
     std::vector<int> circleY(numCircles);
     int circleRadius = 30;
 
-    // Velocidades de movimiento aleatorias
     std::vector<int> circleSpeedX(numCircles);
     std::vector<int> circleSpeedY(numCircles);
 
-    // Generar círculos con propiedades aleatorias
+    #pragma omp parallel for
     for (int i = 0; i < numCircles; ++i) {
         circleX[i] = rand() % (800 - 2 * circleRadius) + circleRadius;
         circleY[i] = rand() % (600 - 2 * circleRadius) + circleRadius;
@@ -85,14 +75,16 @@ int main(int argc, char* argv[]) {
         circleSpeedY[i] = rand() % 5 + 1;
     }
 
-    omp_lock_t circlesMutex;    //Inicializar mutex
-
     Uint32 current_time, last_time = 0, fps = 0;
+    Uint32 total_fps = 0;
+    Uint32 total_time = 0;
 
     while (!quit) {
         current_time = SDL_GetTicks();
         if (current_time > last_time + 1000) {
             printf("%d fps\n", fps);
+            total_fps += fps;
+            total_time += 1000;
             fps = 0;
             last_time = current_time;
         }
@@ -105,18 +97,13 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        // Limpiar el renderer
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderClear(renderer);
-
-        omp_init_lock(&circlesMutex); // Se inicializa el mutex
 
         #pragma omp parallel for
         for (int i = 0; i < numCircles; ++i) {
             circleX[i] += circleSpeedX[i];
             circleY[i] += circleSpeedY[i];
-
-            omp_set_lock(&circlesMutex);
 
             if (circleX[i] <= circleRadius || circleX[i] >= 800 - circleRadius) {
                 circleSpeedX[i] = -circleSpeedX[i];
@@ -130,17 +117,21 @@ int main(int argc, char* argv[]) {
             Uint8 green = rand() % 256;
             Uint8 blue = rand() % 256;
 
-            
-            SDL_SetRenderDrawColor(renderer, red, green, blue, 255);
-            SDL_RenderFillCircle(renderer, circleX[i], circleY[i], circleRadius);
-            omp_unset_lock(&circlesMutex);
+            #pragma omp critical
+            {
+                SDL_SetRenderDrawColor(renderer, red, green, blue, 255);
+                SDL_RenderFillCircle(renderer, circleX[i], circleY[i], circleRadius);
+            }
         }
 
-        // Actualizar la pantalla
         SDL_RenderPresent(renderer);
     }
 
-    // Liberar recursos
+    if (total_time > 0) {
+        float average_fps = static_cast<float>(total_fps) / (total_time / 1000.0f);
+        printf("Promedio de FPS: %.2f\n", average_fps);
+    }
+
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();

@@ -1,7 +1,9 @@
 #include <SDL2/SDL.h>
 #include <cstdlib>
 #include <ctime>
+#include <vector>
 #include <iostream>
+#include <omp.h>
 
 // Funcion que genera el circulo
 void SDL_RenderFillCircle(SDL_Renderer* renderer, int x, int y, int radius) {
@@ -67,21 +69,24 @@ int main(int argc, char* argv[]) {
     srand(static_cast<unsigned int>(time(nullptr)));
 
     // Arreglos para almacenar las propiedades de los círculos
-    int circleX[numCircles];
-    int circleY[numCircles];
+    std::vector<int> circleX(numCircles);
+    std::vector<int> circleY(numCircles);
     int circleRadius = 30;
 
     // Velocidades de movimiento aleatorias
-    int circleSpeedX[numCircles];
-    int circleSpeedY[numCircles];
+    std::vector<int> circleSpeedX(numCircles);
+    std::vector<int> circleSpeedY(numCircles);
 
     // Generar círculos con propiedades aleatorias
+    #pragma omp parallel for
     for (int i = 0; i < numCircles; ++i) {
         circleX[i] = rand() % (800 - 2 * circleRadius) + circleRadius;
         circleY[i] = rand() % (600 - 2 * circleRadius) + circleRadius;
         circleSpeedX[i] = rand() % 5 + 1;
         circleSpeedY[i] = rand() % 5 + 1;
     }
+
+    omp_lock_t circlesMutex;    //Inicializar mutex
 
     Uint32 current_time, last_time = 0, fps = 0;
     Uint32 total_fps = 0;
@@ -109,9 +114,12 @@ int main(int argc, char* argv[]) {
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         SDL_RenderClear(renderer);
 
+
+        #pragma omp parallel for num_threads(8)
         for (int i = 0; i < numCircles; ++i) {
             circleX[i] += circleSpeedX[i];
             circleY[i] += circleSpeedY[i];
+
 
             if (circleX[i] <= circleRadius || circleX[i] >= 800 - circleRadius) {
                 circleSpeedX[i] = -circleSpeedX[i];
@@ -124,9 +132,14 @@ int main(int argc, char* argv[]) {
             Uint8 red = rand() % 256;
             Uint8 green = rand() % 256;
             Uint8 blue = rand() % 256;
-            SDL_SetRenderDrawColor(renderer, red, green, blue, 255);
 
-            SDL_RenderFillCircle(renderer, circleX[i], circleY[i], circleRadius);
+
+            #pragma omp critical
+            {
+                SDL_SetRenderDrawColor(renderer, red, green, blue, 255);
+                SDL_RenderFillCircle(renderer, circleX[i], circleY[i], circleRadius);
+            }
+
         }
 
         // Actualizar la pantalla
