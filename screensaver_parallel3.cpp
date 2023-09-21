@@ -24,6 +24,7 @@ int main(int argc, char* argv[]) {
 
 
     int numCircles = std::stoi(argv[1]); // Obtener el número de círculos desde el argumento
+    if(numCircles >= 500) numCircles = numCircles / 2;
 
     if(numCircles <=0 ){
         std::cout << "No se pueden ingresar numeros menores o iguales que 0" << std::endl;
@@ -133,9 +134,12 @@ int main(int argc, char* argv[]) {
                 circleSpeedY[i] = -circleSpeedY[i];
             }
 
+            #pragma omp critical
+            {
             // Utilizar los colores almacenados para cada círculo
             SDL_SetRenderDrawColor(renderer, circleRed[i], circleGreen[i], circleBlue[i], 255);
             SDL_RenderFillCircle(renderer, circleX[i], circleY[i], circleRadius);
+             }
         }
 
         // Actualizar la pantalla
