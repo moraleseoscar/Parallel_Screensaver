@@ -22,9 +22,20 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    double start_time, end_time;
+    start_time = omp_get_wtime();
 
-    int numCircles = std::stoi(argv[1]); // Obtener el número de círculos desde el argumento
-    if(numCircles >= 500) numCircles = numCircles / 2;
+    int numCircles;
+
+
+    try {
+        numCircles = std::stoi(argv[1]); // Obtener el número de círculos desde el argumento
+        if(numCircles >= 500) numCircles = numCircles / 2;
+    } catch (const std::invalid_argument& e) {
+        std::cout << "Error: El argumento no es un número válido." << std::endl;
+        return 1;
+    }
+
 
     if(numCircles <=0 ){
         std::cout << "No se pueden ingresar numeros menores o iguales que 0" << std::endl;
@@ -156,6 +167,10 @@ int main(int argc, char* argv[]) {
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
+
+    end_time = omp_get_wtime();
+    double wave_creation_time = end_time - start_time;
+    std::cout << "Tiempo de creación de onda: " << wave_creation_time << " segundos" << std::endl;
 
     return 0;
 }
